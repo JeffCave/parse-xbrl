@@ -1,4 +1,4 @@
-var ParseXbrl = require('../index.js');
+import {Xbrl} from '../xbrl.mjs';
 
 var wlRossHolingCorp10kParsed = {
  'NetCashFlowsContinuing': -791415,
@@ -561,7 +561,7 @@ var google10kParsed = {
 describe('parse-xbrl', function () {
 
   it('should parse the xbrl for Amazon 10k', function (done) {
-    var amazon10kOutput = ParseXbrl.parse('./test/sampleXbrlDocuments/amazon_10k.xml');
+    var amazon10kOutput = Xbrl.parse('./test/sampleXbrlDocuments/amazon_10k.xml');
     amazon10kOutput.then(function(results) {
       for (var key in results) {
         if (amazon10kParsed[key]) {
@@ -573,7 +573,7 @@ describe('parse-xbrl', function () {
   })
 
   it('should parse the xbrl for Cannabics Pharmaceuticals Inc. 10k', function (done) {
-    var cannabicsPharmaceuticals10kOutput = ParseXbrl.parse('./test/sampleXbrlDocuments/cannabics_pharmaceuticals_inc_10k.xml');
+    var cannabicsPharmaceuticals10kOutput = Xbrl.parse('./test/sampleXbrlDocuments/cannabics_pharmaceuticals_inc_10k.xml');
     cannabicsPharmaceuticals10kOutput.then(function(results) {
       for (var key in results) {
         if (cannabicsPharmaceuticals10kParsed[key]) {
@@ -585,7 +585,7 @@ describe('parse-xbrl', function () {
   })
 
   it('should parse the xbrl for Costco Inc. 10k', function (done) {
-    var costco10kOutput = ParseXbrl.parse('./test/sampleXbrlDocuments/costco_inc_10k.xml');
+    var costco10kOutput = Xbrl.parse('./test/sampleXbrlDocuments/costco_inc_10k.xml');
     costco10kOutput.then(function(results) {
       for (var key in results) {
         if (costco10kParsed[key]) {
@@ -597,7 +597,7 @@ describe('parse-xbrl', function () {
   })
 
   it('should parse the xbrl for Transatlantic Capital Inc. 10k', function (done) {
-    var transatlanticCapital10kOutput = ParseXbrl.parse('./test/sampleXbrlDocuments/transatlantic_capital_inc_10k.xml');
+    var transatlanticCapital10kOutput = Xbrl.parse('./test/sampleXbrlDocuments/transatlantic_capital_inc_10k.xml');
     transatlanticCapital10kOutput.then(function(results) {
       for (var key in results) {
         if (transatlanticCapital10kParsed[key]) {
@@ -609,7 +609,7 @@ describe('parse-xbrl', function () {
   })
 
   it('should parse the xbrl for WL Ross Holding Corp 10k', function (done) {
-    var wlRossHolingCorp10kOutput = ParseXbrl.parse('./test/sampleXbrlDocuments/wl_ross_holding_corp_10k.xml');
+    var wlRossHolingCorp10kOutput = Xbrl.parse('./test/sampleXbrlDocuments/wl_ross_holding_corp_10k.xml');
     wlRossHolingCorp10kOutput.then(function(results) {
       for (var key in results) {
         if (wlRossHolingCorp10kParsed[key]) {
@@ -621,7 +621,7 @@ describe('parse-xbrl', function () {
   })
 
   it('should parse the xbrl for Sweets and Treats 10q', function (done) {
-    var sweetsAndTreats10qOutput = ParseXbrl.parse('./test/sampleXbrlDocuments/sweets_and_treats_10q.xml');
+    var sweetsAndTreats10qOutput = Xbrl.parse('./test/sampleXbrlDocuments/sweets_and_treats_10q.xml');
     sweetsAndTreats10qOutput.then(function(results) {
       for (var key in results) {
         if (sweetsAndTreats10qParsed[key]) {
@@ -633,7 +633,7 @@ describe('parse-xbrl', function () {
   })
 
   it('should parse the xbrl for Ruby Tuesday 10q', function (done) {
-    var rubyTuesday10qOutput = ParseXbrl.parse('./test/sampleXbrlDocuments/ruby_tuesday_10q.xml');
+    var rubyTuesday10qOutput = Xbrl.parse('./test/sampleXbrlDocuments/ruby_tuesday_10q.xml');
     rubyTuesday10qOutput.then(function(results) {
       for (var key in results) {
         if (rubyTuesday10qParsed[key]) {
@@ -645,7 +645,7 @@ describe('parse-xbrl', function () {
   })
   
   it('should parse the xbrl for Google/Alphabet 10k', function (done) {
-    var google10kOutput = ParseXbrl.parse('./test/sampleXbrlDocuments/google_10k.xml');
+    var google10kOutput = Xbrl.parse('./test/sampleXbrlDocuments/google_10k.xml');
     google10kOutput.then(function(results) {
       for (var key in results) {
         if (google10kParsed[key]) {
