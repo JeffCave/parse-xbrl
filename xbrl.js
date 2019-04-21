@@ -3,10 +3,12 @@ const xmlParser = require('xml2json');
 const FundamentalAccountingConcepts = require('./FundamentalAccountingConcepts.js').FundamentalAccountingConcepts;
 
 'use strict';
-class xmlbrParser {
+exports.xmlbrParser = class xmlbrParser {
+	
 	constructor(xml = null) {
 		this.isLoaded = false;
 		this.fields = {};
+		this.values = {};
 		if (xml) {
 			this.fromString(xml);
 		}
@@ -57,16 +59,22 @@ class xmlbrParser {
 		}
 		else {
 			let durations = this.getContextForDurations(currentYearEnd);
+			let instants = this.getContextForInstants(currentYearEnd);
 
-			this.fields.ContextForInstants = this.getContextForInstants(currentYearEnd);
+			this.fields.ContextForInstants = instants.default;
 			this.fields.ContextForDurations = durations.contextForDurations;
 			this.fields.IncomeStatementPeriodYTD = durations.incomeStatementPeriodYTD;
 			this.fields.BalanceSheetDate = currentYearEnd;
 
+			this.values.IncomeStatementPeriodYTD = durations.incomeStatementPeriodYTD;
+			this.values.BalanceSheetDate = currentYearEnd;
+			this.values.durations = durations.durations;
+			this.values.instants = instants.instants;
+
 			// Load the rest of the facts
 			FundamentalAccountingConcepts.load(this);
 		}
-		return this.fields;
+		return this.values;
 	}
 
 	// Utility functions
@@ -92,24 +100,36 @@ class xmlbrParser {
 			concept = null;
 		}
 		this.fields[fieldName] = concept;
+		this.values[fieldName] = concept;
 
 		console.debug(`loaded ${fieldName}: ${this.fields[fieldName]}`);
 	}
 
 
-	getFactValue(concept, periodType) {
-		let contextReference = {
+	getFactValue(concept, context) {
+		// If the user selected one of the default/placeholder 
+		// values, look up the value we set aside.
+		let placeholders = {
 			"Instant": this.fields.ContextForInstants,
 			"Duration": this.fields.ContextForDurations
 		};
-		contextReference = contextReference[periodType];
-		if(!contextReference){
-			console.warn('CONTEXT ERROR');
+		if(context in placeholders){
+			context = placeholders[context];
+		}
+		// Check the value to see it was a duration that has been
+		// included in our document.
+		if(!(context in this.values.durations) && !(context in this.values.instants)){
+			console.error('Context Error: ' + contextReference);
+			return null;
 		}
 
 		let factNode = null;
-		this.documentJson[concept].forEach(node => {
-			if (node.contextRef === contextReference) {
+		let nodes = this.documentJson[concept] || [];
+		if(!Array.isArray(nodes)){
+			nodes = [nodes];
+		}
+		nodes.forEach(node => {
+			if (node.contextRef === context) {
 				factNode = node;
 			}
 		});
@@ -117,15 +137,12 @@ class xmlbrParser {
 		let factValue = null;
 		if (factNode) {
 			factValue = factNode['$t'];
-
 			for (var key in factNode) {
 				if (key.indexOf('nil') >= 0) {
 					factValue = 0;
 				}
 			}
-			if (typeof factValue === 'string') {
-				factValue = Number(factValue);
-			}
+			factValue = Number(factValue);
 		}
 		return factValue;
 	}
@@ -166,6 +183,7 @@ class xmlbrParser {
 		var contextForInstants = null;
 		var contextId;
 		var contextPeriods;
+		let instants = {};
 
 		// Uses the concept ASSETS to find the correct instance context
 		var instanceNodesArr = this.getNodeList([
@@ -185,12 +203,13 @@ class xmlbrParser {
 				period = JSON.parse(period);
 				if (period.id === contextId) {
 					let contextPeriod = period.period.instant;
+					instants[period.id] = period.period;
 
 					if (contextPeriod && contextPeriod === endDate) {
 						let instanceHasExplicitMember = null;
 						try {
 							instanceHasExplicitMember = period.entity.segment.explicitMember;
-						} catch{ }
+						} catch(e){ }
 						if (instanceHasExplicitMember) {
 							// console.debug('Instance has explicit member.');
 						} else {
@@ -206,7 +225,10 @@ class xmlbrParser {
 			contextForInstants = this.lookForAlternativeInstanceContext();
 		}
 
-		return contextForInstants;
+		return {
+			default: contextForInstants,
+			instants: instants
+		};
 	}
 
 
@@ -214,6 +236,7 @@ class xmlbrParser {
 		let contextForDurations = null;
 		let startDateYTD = '2099-01-01';
 		let startDate;
+		let durations = {};
 
 		let durationNodesArr = this.getNodeList([
 			'us-gaap:CashAndCashEquivalentsPeriodIncreaseDecrease',
@@ -227,12 +250,13 @@ class xmlbrParser {
 			let context = this.documentJson['xbrli:context'] || this.documentJson['context'];
 			for (let period in context) {
 				period = context[period];
-				period = JSON.stringify(period);
-				period = period.replace(/xbrli:/g, '');
-				period = JSON.parse(period);
 				if (period.id !== contextId) {
 					continue;
 				}
+				period = JSON.stringify(period);
+				period = period.replace(/xbrli:/g, '');
+				period = JSON.parse(period);
+				durations[period.id] = period.period;
 
 				if (period.period.endDate === endDate) {
 					let durationHasExplicitMember = null;
@@ -275,7 +299,8 @@ class xmlbrParser {
 
 		return {
 			contextForDurations: contextForDurations,
-			incomeStatementPeriodYTD: startDateYTD
+			incomeStatementPeriodYTD: startDateYTD,
+			durations: durations
 		}
 	}
 
@@ -303,5 +328,3 @@ class xmlbrParser {
 
 }
 
-
-exports.xmlbrParser = xmlbrParser;
