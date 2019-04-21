@@ -17,7 +17,7 @@ exports.xmlbrParser = class xmlbrParser {
 
 	static async parseStr(data) {
 		let parser = new xmlbrParser(data);
-		let parsed = JSON.parse(JSON.stringify(parser.fields));
+		let parsed = JSON.parse(JSON.stringify(parser.values));
 		return parsed;
 	}
 
@@ -51,31 +51,31 @@ exports.xmlbrParser = class xmlbrParser {
 		this.loadField('DocumentFiscalPeriodFocus', 'DocumentFiscalPeriodFocusContext', 'contextRef');
 		this.loadField('DocumentType');
 
-		let currentYearEnd = this.loadYear();
-		if (!currentYearEnd) {
+		let currentPeriodEnd = this.getPeriodEnd();
+		if (!currentPeriodEnd) {
 			//throw new Error('No year end found.');
 			console.error('No year end found.');
 			return false;
 		}
-		else {
-			let durations = this.getContextForDurations(currentYearEnd);
-			let instants = this.getContextForInstants(currentYearEnd);
+		let durations = this.getContextForDurations(currentPeriodEnd);
+		let instants = this.getContextForInstants(currentPeriodEnd);
 
-			this.fields.ContextForInstants = instants.default;
-			this.fields.ContextForDurations = durations.contextForDurations;
-			this.fields.IncomeStatementPeriodYTD = durations.incomeStatementPeriodYTD;
-			this.fields.BalanceSheetDate = currentYearEnd;
+		this.fields.ContextForInstants = instants.default;
+		this.fields.ContextForDurations = this.fields.DocumentFiscalPeriodFocusContext;
+		this.fields.BalanceSheetDate = currentPeriodEnd;
 
-			this.values.IncomeStatementPeriodYTD = durations.incomeStatementPeriodYTD;
-			this.values.BalanceSheetDate = currentYearEnd;
-			this.values.durations = durations.durations;
-			this.values.instants = instants.instants;
+		this.values.ContextForInstants = instants.default;
+		this.values.ContextForDurations = this.values.DocumentFiscalPeriodFocusContext;
+		this.values.BalanceSheetDate = currentPeriodEnd;
+		this.values.durations = durations;
+		this.values.instants = instants.instants;
 
-			// Load the rest of the facts
-			FundamentalAccountingConcepts.load(this);
-		}
+		// Load the rest of the facts
+		FundamentalAccountingConcepts.load(this);
+
 		return this.values;
 	}
+
 
 	// Utility functions
 	loadField(conceptToFind, fieldName, key) {
@@ -102,7 +102,7 @@ exports.xmlbrParser = class xmlbrParser {
 		this.fields[fieldName] = concept;
 		this.values[fieldName] = concept;
 
-		console.debug(`loaded ${fieldName}: ${this.fields[fieldName]}`);
+		//console.debug(`loaded ${fieldName}: ${this.fields[fieldName]}`);
 	}
 
 
@@ -167,63 +167,65 @@ exports.xmlbrParser = class xmlbrParser {
 	}
 
 
-	loadYear() {
+	getPeriodEnd() {
 		var currentEnd = this.fields.DocumentPeriodEndDate;
-		if (/(\d{4})-(\d{1,2})-(\d{1,2})/.test(currentEnd)) {
-			return currentEnd;
+		try{
+			currentEnd = currentEnd.split('-');
+			currentEnd[1] = +currentEnd[1] - 1
+			currentEnd = Date.UTC(... currentEnd);
 		}
-		else {
-			console.warn(currentEnd + ' is not a date');
-			return false;
+		catch(e){
+			currentEnd = null;
 		}
+		if(Number.isNaN(currentEnd)){
+			currentEnd = null;
+		}
+		if(!currentEnd){
+			console.warn(this.fields.DocumentPeriodEndDate + ' is not a date');
+		}
+		return this.formatDate(currentEnd);
+	}
+
+	formatDate(date){
+		date = new Date(date);
+		date = date.toISOString().split('T').shift();
+		return date;
 	}
 
 
 	getContextForInstants(endDate) {
-		var contextForInstants = null;
-		var contextId;
-		var contextPeriods;
-		let instants = {};
+		let context = this.documentJson;
+		context = JSON.stringify(context);
+		context = context.replace(/xbrli:/g, '');
+		context = JSON.parse(context);
+		context = context.context;
 
 		// Uses the concept ASSETS to find the correct instance context
-		var instanceNodesArr = this.getNodeList([
-			'us-gaap:Assets',
-			'us-gaap:AssetsCurrent',
-			'us-gaap:LiabilitiesAndStockholdersEquity'
-		]);
-
-		for (var i = 0; i < instanceNodesArr.length; i++) {
-
-			contextId = instanceNodesArr[i].contextRef;
-			contextPeriods = this.documentJson['xbrli:context'] || this.documentJson['context'];
-
-			contextPeriods.forEach((period) => {
-				period = JSON.stringify(period);
-				period = period.replace(/xbrli:/g, '');
-				period = JSON.parse(period);
-				if (period.id === contextId) {
-					let contextPeriod = period.period.instant;
-					instants[period.id] = period.period;
-
-					if (contextPeriod && contextPeriod === endDate) {
-						let instanceHasExplicitMember = null;
-						try {
-							instanceHasExplicitMember = period.entity.segment.explicitMember;
-						} catch(e){ }
-						if (instanceHasExplicitMember) {
-							// console.debug('Instance has explicit member.');
-						} else {
-							contextForInstants = contextId;
-							// console.debug('Use Context:', contextForInstants);
-						}
-					}
-				}
-			});
-		}
-
-		if (contextForInstants === null) {
+		let instanceNodesArr = this
+			.getNodeList([
+				'us-gaap:Assets',
+				'us-gaap:AssetsCurrent',
+				'us-gaap:LiabilitiesAndStockholdersEquity'
+			])
+			.map(d=>{return d.contextRef})
+			;
+		let instants = Object.values(context)
+			.filter(period=>{
+				let ismatch = instanceNodesArr.includes(period.id);
+				return ismatch;
+			})
+			.reduce((a,period)=>{
+				a[period.id] = period.period.instant;
+				return a;
+			},{});
+		
+		let contextForInstants = Object.entries(instants).filter((i)=>{ 
+			return i[1] === endDate;
+		}).pop();
+		if (!contextForInstants) {
 			contextForInstants = this.lookForAlternativeInstanceContext();
 		}
+		contextForInstants = contextForInstants.shift();
 
 		return {
 			default: contextForInstants,
@@ -232,76 +234,60 @@ exports.xmlbrParser = class xmlbrParser {
 	}
 
 
+	/**
+	 * Identifies relevant Range Contexts
+	 * 
+	 * Generates a list of Range Contexts that are used in the 
+	 * dataset, also attempts to identify the *most* relevant one to 
+	 * the current document.
+	 * 
+	 * Key Ranges:
+	 *  - Financial Year
+	 *  - Focal Period (eg. Q1, Q2)
+	 * 
+	 * The current need is based on financial statements, so we want to 
+	 * know the period of the Current Financial Year, and the start/end of 
+	 * the current quarter. All else can be calculated.
+	 * 
+	 * There will be other cases that are relevant to this function, 
+	 * but they have not been explicitly handled.
+	 * 
+	 * @param {date} endDate 
+	 */
 	getContextForDurations(endDate) {
-		let contextForDurations = null;
-		let startDateYTD = '2099-01-01';
-		let startDate;
-		let durations = {};
+		let context = this.documentJson;
+		context = JSON.stringify(context);
+		context = context.replace(/xbrli:/g, '');
+		context = JSON.parse(context);
+		context = context.context;
 
-		let durationNodesArr = this.getNodeList([
-			'us-gaap:CashAndCashEquivalentsPeriodIncreaseDecrease',
-			'us-gaap:CashPeriodIncreaseDecrease',
-			'us-gaap:NetIncomeLoss',
-			'dei:DocumentPeriodEndDate'
-		]);
-
-		for (let contextId in durationNodesArr) {
-			contextId = durationNodesArr[contextId].contextRef;
-			let context = this.documentJson['xbrli:context'] || this.documentJson['context'];
-			for (let period in context) {
-				period = context[period];
-				if (period.id !== contextId) {
-					continue;
-				}
-				period = JSON.stringify(period);
-				period = period.replace(/xbrli:/g, '');
-				period = JSON.parse(period);
-				durations[period.id] = period.period;
-
-				if (period.period.endDate === endDate) {
-					let durationHasExplicitMember = null;
-					try {
-						durationHasExplicitMember = period.entity.segment.explicitMember;
-					}
-					catch (e) {
-						durationHasExplicitMember = null;
-					}
-					if (durationHasExplicitMember) {
-						console.debug('Duration has explicit member.');
-					}
-					else {
-						startDate = period.period.startDate;
-
-						// console.debug('Context start date:', startDate);
-						// console.debug('YTD start date:', startDateYTD);
-
-						if (startDate <= startDateYTD) {
-							// console.debug('Context start date is less than current year to date, replace');
-							// console.debug('Context start date: ', startDate);
-							// console.debug('Current min: ', startDateYTD);
-
-							startDateYTD = startDate;
-							contextForDurations = period.id;
-						}
-						else {
-							// console.debug('Context start date is greater than YTD, keep current YTD');
-							// console.debug('Context start date: ', startDate);
-						}
-
-						// console.debug('Use context ID: ', contextForDurations);
-						// console.debug('Current min: ', startDateYTD);
-						// console.debug('');
-						// console.debug('Use context: ', contextForDurations);
-					}
-				}
-			}
-		}
-
-		return {
-			contextForDurations: contextForDurations,
-			incomeStatementPeriodYTD: startDateYTD,
-			durations: durations
-		}
+		// sample a couple of relevant nodes for the durations they use
+		let durationNodesArr = this
+			.getNodeList([
+				'us-gaap:CashAndCashEquivalentsPeriodIncreaseDecrease',
+				'us-gaap:CashPeriodIncreaseDecrease',
+				'us-gaap:NetIncomeLoss',
+				'dei:DocumentPeriodEndDate'
+			])
+			.map(d=>{return d.contextRef})
+			;
+		// It is possible that there are many different types of contexts 
+		// (Instance vs Durations), but also durations that are not relevant 
+		// to us. For example, major shareholder events (conferences) could 
+		// have a duration specified for them; the release of shares happens 
+		// at an instance of time. The problem is that we don't use that 
+		// information in our financials that we build, so we need to filter 
+		// the data down to items that we are going to use.
+		let durations = Object.values(context)
+			.filter(period=>{
+				let ismatch = durationNodesArr.includes(period.id);
+				return ismatch;
+			})
+			.reduce((a,period)=>{
+				a[period.id] = period.period;
+				return a;
+			},{});
+		return durations;
 	}
 
 
