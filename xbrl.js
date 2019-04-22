@@ -38,6 +38,14 @@ exports.xmlbrParser = class xmlbrParser {
 		jsonObj = JSON.parse(jsonObj);
 		this.documentJson = jsonObj[Object.keys(jsonObj)[0]];
 
+		this.values.dei = this.values.dei || {};
+		for(let f in this.documentJson){
+			if(/^dei:/.test(f)){
+				let key = f.split(':').pop();
+				this.values.dei[key] = this.documentJson[f].$t;
+			}
+		}
+
 		// Calculate and load basic facts from json doc
 		this.loadField('EntityRegistrantName');
 		this.loadField('CurrentFiscalYearEndDate');
@@ -45,11 +53,17 @@ exports.xmlbrParser = class xmlbrParser {
 		this.loadField('EntityFilerCategory');
 		this.loadField('TradingSymbol');
 		this.loadField('DocumentPeriodEndDate');
+		this.loadField('DocumentType');
+		
 		this.loadField('DocumentFiscalYearFocus');
 		this.loadField('DocumentFiscalPeriodFocus');
-		this.loadField('DocumentFiscalYearFocus', 'DocumentFiscalYearFocusContext', 'contextRef');
 		this.loadField('DocumentFiscalPeriodFocus', 'DocumentFiscalPeriodFocusContext', 'contextRef');
-		this.loadField('DocumentType');
+		if(this.values.DocumentFiscalYearFocus){
+			this.loadField('DocumentFiscalYearFocus', 'DocumentFiscalYearFocusContext', 'contextRef');
+		}
+		else{
+			this.loadField('CurrentFiscalYearEndDate', 'DocumentFiscalYearFocusContext', 'contextRef');
+		}
 
 		let currentPeriodEnd = this.getPeriodEnd();
 		if (!currentPeriodEnd) {
@@ -61,17 +75,18 @@ exports.xmlbrParser = class xmlbrParser {
 		let instants = this.getContextForInstants(currentPeriodEnd);
 
 		this.fields.ContextForInstants = instants.default;
-		this.fields.ContextForDurations = this.fields.DocumentFiscalPeriodFocusContext;
+		this.fields.ContextForDurations = durations.default;
 		this.fields.BalanceSheetDate = currentPeriodEnd;
 
 		this.values.ContextForInstants = instants.default;
-		this.values.ContextForDurations = this.values.DocumentFiscalPeriodFocusContext;
+		this.values.ContextForDurations = durations.default;
 		this.values.BalanceSheetDate = currentPeriodEnd;
-		this.values.durations = durations;
+		this.values.durations = durations.durations;
 		this.values.instants = instants.instants;
 
 		// Load the rest of the facts
 		FundamentalAccountingConcepts.load(this);
+		this.values.AsAt = Date.now();
 
 		return this.values;
 	}
@@ -287,7 +302,28 @@ exports.xmlbrParser = class xmlbrParser {
 				a[period.id] = period.period;
 				return a;
 			},{});
-		return durations;
+		
+		// There is a chance that there is no explicitely labeled
+		// Fiscal Period Focus. But we need one.
+		// If we were not explicitely given one, make a guess
+		let focus = this.fields.DocumentFiscalPeriodFocusContext;
+		if(!focus){
+			let candidates = Object.entries(durations);
+			candidates = candidates.filter((period)=>{
+				return period[1].endDate === endDate;
+			});
+			for(let f in candidates){
+				f = candidates[f];
+				if(!focus || focus[1].startDate < f[1].startDate){
+					focus = f;
+				}
+			}
+			focus = focus[0];
+		}
+		return {
+			default:focus,
+			durations:durations
+		};
 	}
 
 

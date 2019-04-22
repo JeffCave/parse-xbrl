@@ -24,14 +24,14 @@ exports.FundamentalAccountingConcepts = class FundamentalAccountingConcepts{
 		FundamentalAccountingConcepts._loadDurations(xbrl);
 
 		// Key ratios
-		xbrl.values['ROA'] = xbrl.values['NetIncomeLoss'] / xbrl.values['Assets'];
-		xbrl.values['ROE'] = xbrl.values['NetIncomeLoss'] / xbrl.values['Equity'];
-		xbrl.values['ROS'] = xbrl.values['NetIncomeLoss'] / xbrl.values['Revenues'];
+		xbrl.values.ROA = xbrl.values.NetIncomeLoss / xbrl.values.Assets;
+		xbrl.values.ROE = xbrl.values.NetIncomeLoss / xbrl.values.Equity;
+		xbrl.values.ROS = xbrl.values.NetIncomeLoss / xbrl.values.Revenues;
 		let sgr = 
-			xbrl.values['ROS'] * 
-			(1 + (xbrl.values['Assets'] - xbrl.values['Equity']) / xbrl.values['Equity'])
+			xbrl.values.ROS * 
+			(1 + (xbrl.values.Assets - xbrl.values.Equity) / xbrl.values.Equity)
 			;
-		xbrl.values['SGR'] = sgr / ((1 / (xbrl.values['Revenues'] / xbrl.values['Assets'])) - sgr) || null;
+		xbrl.values.SGR = sgr / ((1 / (xbrl.values.Revenues / xbrl.values.Assets)) - sgr) || null;
 
 		// create our flattened table persepective
 		for(let fld in xbrl.values){
@@ -376,6 +376,7 @@ exports.FundamentalAccountingConcepts = class FundamentalAccountingConcepts{
 		let defContext = xbrl.values.durations[xbrl.values.ContextForDurations];
 		for(let fld in defContext){
 			xbrl.fields[fld] = defContext[fld];
+			xbrl.values[fld] = defContext[fld];
 		}
 	}
 
@@ -680,18 +681,24 @@ exports.FundamentalAccountingConcepts = class FundamentalAccountingConcepts{
 		}
 
 		// Impute: OperatingExpenses based on existance of costs and expenses and cost of revenues
-		if (context['CostOfRevenue'] !== 0 &&
+		logic = 
+			context['CostOfRevenue'] !== 0 &&
 			context['CostsAndExpenses'] !== 0 &&
-			context['OperatingExpenses'] === 0) {
+			context['OperatingExpenses'] === 0
+			;
+		if(logic) {
 			context['OperatingExpenses'] = context['CostsAndExpenses'] - context['CostOfRevenue'];
 		}
 
 		// Impute: CostOfRevenues single-step method
-		if (context['Revenues'] !== 0 &&
+		logic = 
+			context['Revenues'] !== 0 &&
 			context['GrossProfit'] === 0 &&
-			(context['Revenues'] - context['CostsAndExpenses'] == context['OperatingIncomeLoss']) &&
+			context['OperatingIncomeLoss'] == (context['Revenues'] - context['CostsAndExpenses'])  &&
 			context['OperatingExpenses'] === 0 &&
-			context['OtherOperatingIncome'] === 0) {
+			context['OtherOperatingIncome'] === 0
+			;
+		if(logic) {
 			context['CostOfRevenue'] = context['CostsAndExpenses'] - context['OperatingExpenses'];
 		}
 
