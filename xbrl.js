@@ -240,6 +240,9 @@ exports.xmlbrParser = class xmlbrParser {
 		if (!contextForInstants) {
 			contextForInstants = this.lookForAlternativeInstanceContext();
 		}
+		if(!contextForInstants){
+			throw new Error("Unable to find Instant Context");
+		}
 		contextForInstants = contextForInstants.shift();
 
 		return {
@@ -332,19 +335,20 @@ exports.xmlbrParser = class xmlbrParser {
 		let altNodesArr = JSON.stringify(this.documentJson);
 		altNodesArr = altNodesArr.replace(/xbrli:/g, '');
 		altNodesArr = JSON.parse(altNodesArr);
-		altNodesArr = altNodesArr.context.period.instant
+		altNodesArr = altNodesArr.context
 			.filter((node) => {
-				let ismatch = (node === this.fields['BalanceSheetDate']);
+				let ismatch = (node.period.instant === this.fields.DocumentPeriodEndDate);
 				return ismatch;
-			})
-			.forEach(alt => {
-				this.documentJson['us-gaap:Assets'].forEach((node) => {
-					if (node.contextRef === alt.id) {
-						altContextId = alt.id;
-					}
-				});
-			})
-			;
+			});
+		for(let alt in altNodesArr){
+			alt = altNodesArr[alt];
+			for(let node in this.documentJson['us-gaap:Assets']){
+				node = this.documentJson['us-gaap:Assets'][node];
+				if (node.contextRef === alt.id) {
+					altContextId = alt.id;
+				}
+			}
+		}
 		return altContextId;
 	}
 
