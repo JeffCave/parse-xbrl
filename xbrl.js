@@ -78,9 +78,10 @@ exports.xmlbrParser = class xmlbrParser {
 		this.fields.ContextForDurations = durations.default;
 		this.fields.BalanceSheetDate = currentPeriodEnd;
 
+		this.values.BalanceSheetDate = currentPeriodEnd;
+		this.values.DocumentFiscalPeriodFocusContext = durations.default;
 		this.values.ContextForInstants = instants.default;
 		this.values.ContextForDurations = durations.default;
-		this.values.BalanceSheetDate = currentPeriodEnd;
 		this.values.durations = durations.durations;
 		this.values.instants = instants.instants;
 
@@ -309,7 +310,25 @@ exports.xmlbrParser = class xmlbrParser {
 		// There is a chance that there is no explicitely labeled
 		// Fiscal Period Focus. But we need one.
 		// If we were not explicitely given one, make a guess
-		let focus = this.fields.DocumentFiscalPeriodFocusContext;
+		let focus = this.values.DocumentFiscalPeriodFocusContext;
+		// don't trust what they gave us
+		if(focus){
+			if(/Q[1-4]/.test(this.values.DocumentFiscalPeriodFocus)){
+				// If this is a Quarterly report, then the fiscal period focus
+				// should be the quarter, not the Year to Date.
+				let start = durations[focus].startDate;
+				let end = durations[focus].endDate;
+				start = new Date(start);
+				end = new Date(end);
+				let diff = 11-end.getMonth();
+				start.setMonth(start.getMonth()+diff);
+				end.setMonth(end.getMonth()+diff);
+				diff = end.getMonth() - start.getMonth();
+				if(diff !== 2){
+					focus = null;
+				}
+			}
+		}
 		if(!focus){
 			let candidates = Object.entries(durations);
 			candidates = candidates.filter((period)=>{
@@ -321,7 +340,8 @@ exports.xmlbrParser = class xmlbrParser {
 					focus = f;
 				}
 			}
-			focus = focus[0];
+			focus = focus || [];
+			focus = focus[0] || null;
 		}
 		return {
 			default:focus,
