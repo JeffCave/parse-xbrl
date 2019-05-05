@@ -101,11 +101,18 @@ exports.xmlbrParser = class xmlbrParser {
 		let concept = this.documentJson['dei:' + conceptToFind];
 		// console.debug(fieldName + "=> " + JSON.stringify(concept, null, 3));
 		if (Array.isArray(concept)) {
-			// warn about multliple concepts...
-			console.warn('Found ' + concept.length + ' context references')
-			concept.forEach( (conceptInstance, idx)=>{
-				console.warn('=> ' + conceptInstance.contextRef + (idx === 0 ? ' (selected)' : ''));
-			});
+			// had an instance where I was getting multiple values, but they 
+			// were exactly the same. I don't know how, or why it happened, 
+			// but if we have an array, check to see they are actually distinct
+			// values
+			concept = Object.keys(concept.reduce((a,d)=>{a[d] = null;return a;},{}));
+			if(concept.length > 1){
+				// warn about multliple concepts...
+				console.warn('Found ' + concept.length + ' context references')
+				concept.forEach( (conceptInstance, idx)=>{
+					console.warn('=> ' + conceptInstance.contextRef + (idx === 0 ? ' (selected)' : ''));
+				});
+			}
 			// ... then default to the first available contextRef
 			concept = concept.shift();
 		}
