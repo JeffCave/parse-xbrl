@@ -147,7 +147,7 @@ exports.xmlbrParser = class xmlbrParser {
 		}
 
 		let factNode = null;
-		let nodes = this.documentJson[concept] || [];
+		let nodes = this.documentJson[concept] || this.documentJson['us-gaap:'+concept] || [];
 		if(!Array.isArray(nodes)){
 			nodes = [nodes];
 		}

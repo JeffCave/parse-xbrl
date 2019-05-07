@@ -534,9 +534,31 @@ exports.FundamentalAccountingConcepts = class FundamentalAccountingConcepts{
 			xbrl.getFactValue("us-gaap:ComprehensiveIncomeNetOfTaxAttributableToNoncontrollingInterest", duration) || 
 			0;
 
+		// Dividends
+		context.CommonStockDividendsPerShareCashPaid = 
+			xbrl.getFactValue('CommonStockDividendsPerShareCashPaid',duration) || 
+			0;
+		context.CommonStockDividendsPerShareDeclared =
+			xbrl.getFactValue('CommonStockDividendsPerShareDeclared',duration) || 
+			0;
+		context.DividendsCommonStockCash = 
+			xbrl.getFactValue('DividendsCommonStockCash',duration) || 
+			0;
+		context.EarningsPerShareBasic = 
+			xbrl.getFactValue('EarningsPerShareBasic',duration) || 
+			0;
+		context.EarningsPerShareDiluted = 
+			xbrl.getFactValue('EarningsPerShareDiluted',duration) || 
+			0;
+		context.PaymentsOfDividendsCommonStock = 
+			xbrl.getFactValue('PaymentsOfDividendsCommonStock',duration) || 
+			0;
+
+		
 		// 'Adjustments to income statement information
 		// Impute: NonoperatingIncomeLossPlusInterestAndDebtExpense
 		context['NonoperatingIncomeLossPlusInterestAndDebtExpense'] = context['NonoperatingIncomeLoss'] + context['InterestAndDebtExpense'];
+
 
 		// Impute: Net income available to common stockholders  (if it does not exist)
 		let logic = 
