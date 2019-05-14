@@ -320,17 +320,22 @@ exports.xmlbrParser = class xmlbrParser {
 		let focus = this.values.DocumentFiscalPeriodFocusContext;
 		// don't trust what they gave us
 		if(focus){
+			if(!(focus in durations)){
+				focus = Object.keys(durations).shift() || null;
+			}
+		}
+		if(focus){
 			if(/Q[1-4]/.test(this.values.DocumentFiscalPeriodFocus)){
 				// If this is a Quarterly report, then the fiscal period focus
 				// should be the quarter, not the Year to Date.
 				let start = durations[focus].startDate;
 				let end = durations[focus].endDate;
-				start = new Date(start);
-				end = new Date(end);
-				let diff = 11-end.getMonth();
-				start.setMonth(start.getMonth()+diff);
-				end.setMonth(end.getMonth()+diff);
-				diff = end.getMonth() - start.getMonth();
+				start = new Date(Date.UTC(...start.split('-')));
+				end = new Date(Date.UTC(...end.split('-')));
+				let diff = 11-end.getUTCMonth();
+				start.setUTCMonth(start.getUTCMonth()+diff);
+				end.setUTCMonth(end.getUTCMonth()+diff);
+				diff = end.getUTCMonth() - start.getUTCMonth();
 				if(diff !== 2){
 					focus = null;
 				}

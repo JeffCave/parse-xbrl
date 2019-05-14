@@ -67,7 +67,8 @@ exports.FundamentalAccountingConcepts = class FundamentalAccountingConcepts{
 		if (xbrl.fields.NoncurrentAssets === null) {
 			if (xbrl.fields.Assets && xbrl.fields.CurrentAssets) {
 				xbrl.fields.NoncurrentAssets = xbrl.fields.Assets - xbrl.fields.CurrentAssets;
-			} else {
+			} 
+			else {
 				xbrl.fields.NoncurrentAssets = 0;
 			}
 		}
