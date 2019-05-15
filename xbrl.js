@@ -1,4 +1,5 @@
 const xmlParser = require('xml2json');
+const utils = require('../utils.js');
 
 const FundamentalAccountingConcepts = require('./FundamentalAccountingConcepts.js').FundamentalAccountingConcepts;
 
@@ -330,8 +331,8 @@ exports.xmlbrParser = class xmlbrParser {
 				// should be the quarter, not the Year to Date.
 				let start = durations[focus].startDate;
 				let end = durations[focus].endDate;
-				start = new Date(Date.UTC(...start.split('-')));
-				end = new Date(Date.UTC(...end.split('-')));
+				start = utils.utcParse(start);
+				end = utils.utcParse(end);
 				let diff = 11-end.getUTCMonth();
 				start.setUTCMonth(start.getUTCMonth()+diff);
 				end.setUTCMonth(end.getUTCMonth()+diff);
