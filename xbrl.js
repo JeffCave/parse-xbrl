@@ -5,7 +5,7 @@ const FundamentalAccountingConcepts = require('./FundamentalAccountingConcepts.j
 
 'use strict';
 exports.xmlbrParser = class xmlbrParser {
-	
+
 	constructor(xml = null) {
 		this.isLoaded = false;
 		this.fields = {};
@@ -55,7 +55,7 @@ exports.xmlbrParser = class xmlbrParser {
 		this.loadField('TradingSymbol');
 		this.loadField('DocumentPeriodEndDate');
 		this.loadField('DocumentType');
-		
+
 		this.loadField('DocumentFiscalYearFocus');
 		this.loadField('DocumentFiscalPeriodFocus');
 		this.loadField('DocumentFiscalPeriodFocus', 'DocumentFiscalPeriodFocusContext', 'contextRef');
@@ -102,14 +102,14 @@ exports.xmlbrParser = class xmlbrParser {
 		let concept = this.documentJson['dei:' + conceptToFind];
 		// console.debug(fieldName + "=> " + JSON.stringify(concept, null, 3));
 		if (Array.isArray(concept)) {
-			// had an instance where I was getting multiple values, but they 
-			// were exactly the same. I don't know how, or why it happened, 
+			// had an instance where I was getting multiple values, but they
+			// were exactly the same. I don't know how, or why it happened,
 			// but if we have an array, check to see they are actually distinct
 			// values
 			concept = Object.keys(concept.reduce((a,d)=>{a[d] = null;return a;},{}));
 			if(concept.length > 1){
 				// warn about multliple concepts...
-				console.warn('Found ' + concept.length + ' context references')
+				console.warn('Found ' + concept.length + ' context references');
 				concept.forEach( (conceptInstance, idx)=>{
 					console.warn('=> ' + conceptInstance.contextRef + (idx === 0 ? ' (selected)' : ''));
 				});
@@ -131,7 +131,7 @@ exports.xmlbrParser = class xmlbrParser {
 
 
 	getFactValue(concept, context) {
-		// If the user selected one of the default/placeholder 
+		// If the user selected one of the default/placeholder
 		// values, look up the value we set aside.
 		let placeholders = {
 			"Instant": this.fields.ContextForInstants,
@@ -160,7 +160,7 @@ exports.xmlbrParser = class xmlbrParser {
 
 		let factValue = null;
 		if (factNode) {
-			factValue = factNode['$t'];
+			factValue = factNode.$t;
 			for (var key in factNode) {
 				if (key.indexOf('nil') >= 0) {
 					factValue = 0;
@@ -195,7 +195,7 @@ exports.xmlbrParser = class xmlbrParser {
 		var currentEnd = this.fields.DocumentPeriodEndDate;
 		try{
 			currentEnd = currentEnd.split('-');
-			currentEnd[1] = +currentEnd[1] - 1
+			currentEnd[1] = +currentEnd[1] - 1;
 			currentEnd = Date.UTC(... currentEnd);
 		}
 		catch(e){
@@ -231,7 +231,7 @@ exports.xmlbrParser = class xmlbrParser {
 				'us-gaap:AssetsCurrent',
 				'us-gaap:LiabilitiesAndStockholdersEquity'
 			])
-			.map(d=>{return d.contextRef})
+			.map(d=>{return d.contextRef;})
 			;
 		let instants = Object.values(context)
 			.filter(period=>{
@@ -242,8 +242,8 @@ exports.xmlbrParser = class xmlbrParser {
 				a[period.id] = period.period.instant;
 				return a;
 			},{});
-		
-		let contextForInstants = Object.entries(instants).filter((i)=>{ 
+
+		let contextForInstants = Object.entries(instants).filter((i)=>{
 			return i[1] === endDate;
 		}).pop();
 		if (!contextForInstants) {
@@ -263,23 +263,23 @@ exports.xmlbrParser = class xmlbrParser {
 
 	/**
 	 * Identifies relevant Range Contexts
-	 * 
-	 * Generates a list of Range Contexts that are used in the 
-	 * dataset, also attempts to identify the *most* relevant one to 
+	 *
+	 * Generates a list of Range Contexts that are used in the
+	 * dataset, also attempts to identify the *most* relevant one to
 	 * the current document.
-	 * 
+	 *
 	 * Key Ranges:
 	 *  - Financial Year
 	 *  - Focal Period (eg. Q1, Q2)
-	 * 
-	 * The current need is based on financial statements, so we want to 
-	 * know the period of the Current Financial Year, and the start/end of 
+	 *
+	 * The current need is based on financial statements, so we want to
+	 * know the period of the Current Financial Year, and the start/end of
 	 * the current quarter. All else can be calculated.
-	 * 
-	 * There will be other cases that are relevant to this function, 
+	 *
+	 * There will be other cases that are relevant to this function,
 	 * but they have not been explicitly handled.
-	 * 
-	 * @param {date} endDate 
+	 *
+	 * @param {date} endDate
 	 */
 	getContextForDurations(endDate) {
 		let context = this.documentJson;
@@ -296,14 +296,14 @@ exports.xmlbrParser = class xmlbrParser {
 				'us-gaap:NetIncomeLoss',
 				'dei:DocumentPeriodEndDate'
 			])
-			.map(d=>{return d.contextRef})
+			.map(d=>{return d.contextRef;})
 			;
-		// It is possible that there are many different types of contexts 
-		// (Instance vs Durations), but also durations that are not relevant 
-		// to us. For example, major shareholder events (conferences) could 
-		// have a duration specified for them; the release of shares happens 
-		// at an instance of time. The problem is that we don't use that 
-		// information in our financials that we build, so we need to filter 
+		// It is possible that there are many different types of contexts
+		// (Instance vs Durations), but also durations that are not relevant
+		// to us. For example, major shareholder events (conferences) could
+		// have a duration specified for them; the release of shares happens
+		// at an instance of time. The problem is that we don't use that
+		// information in our financials that we build, so we need to filter
 		// the data down to items that we are going to use.
 		let durations = Object.values(context)
 			.filter(period=>{
@@ -314,7 +314,7 @@ exports.xmlbrParser = class xmlbrParser {
 				a[period.id] = period.period;
 				return a;
 			},{});
-		
+
 		// There is a chance that there is no explicitely labeled
 		// Fiscal Period Focus. But we need one.
 		// If we were not explicitely given one, make a guess
@@ -385,5 +385,4 @@ exports.xmlbrParser = class xmlbrParser {
 		return altContextId;
 	}
 
-}
-
+};
